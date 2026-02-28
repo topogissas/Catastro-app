@@ -97,6 +97,25 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
         
+        .map-type-btn {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 999;
+            background: white;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        .map-type-btn:hover {
+            background: #f5f5f5;
+        }
+        
         .gps-btn:hover {
             background: #1557b0;
         }
@@ -524,6 +543,7 @@
                 <button class="sector-btn" onclick="filterMapSector('S5')">S5</button>
             </div>
             <div id="map-results" class="map-results"></div>
+            <button class="map-type-btn" onclick="toggleMapType()" id="map-type-btn">🗺️ Calle</button>
             <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍 GPS</button>
         </div>
     </div>
@@ -684,15 +704,22 @@
             }
         }
         
+        let currentMapType = 'calle';
+        let currentTileLayer = null;
+        
         function initMap() {
             if (map) return;
             
             // Initialize map centered on data
             const center = [11.547, -72.905];
-            map = L.map('map').setView(center, 14);
+            map = L.map('map', { 
+                center: center, 
+                zoom: 14,
+                zoomControl: false
+            });
             
-            // Add OpenStreetMap tiles
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            // Add default OpenStreetMap tiles
+            currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(map);
             
@@ -703,6 +730,48 @@
             if (allData.length > 0) {
                 const bounds = L.latLngBounds(allData.map(d => [d.lat, d.lon]));
                 map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+        
+        function toggleMapType() {
+            const btn = document.getElementById('map-type-btn');
+            
+            if (currentMapType === 'calle') {
+                // Switch to satellite
+                currentMapType = 'satelite';
+                btn.textContent = '🛰️ Satélite';
+                
+                if (currentTileLayer) {
+                    map.removeLayer(currentTileLayer);
+                }
+                
+                currentTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri'
+                }).addTo(map);
+            } else if (currentMapType === 'satelite') {
+                // Switch to hybrid
+                currentMapType = 'hibrido';
+                btn.textContent = '🛰️ Híbrido';
+                
+                if (currentTileLayer) {
+                    map.removeLayer(currentTileLayer);
+                }
+                
+                currentTileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    attribution: '© Google'
+                }).addTo(map);
+            } else {
+                // Switch back to street
+                currentMapType = 'calle';
+                btn.textContent = '🗺️ Calle';
+                
+                if (currentTileLayer) {
+                    map.removeLayer(currentTileLayer);
+                }
+                
+                currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(map);
             }
         }
         
