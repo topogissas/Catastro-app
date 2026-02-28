@@ -593,7 +593,7 @@
                     <span style="width:14px;height:14px;border-radius:50%;background:#F44336;display:inline-block;"></span> Industrial
                 </div>
             </div>
-            <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍</button>
+            <button class="gps-btn" onclick="getUserLocation()" id="gps-btn" title="Mi ubicación">📍</button>
         </div>
     </div>
     
@@ -831,6 +831,7 @@
         
         let userLocationMarker = null;
         let userWatchId = null;
+        let gpsActive = false;
         
         function getUserLocation() {
             if (!map) {
@@ -843,13 +844,27 @@
                 return;
             }
             
-            // Stop previous watch if exists
-            if (userWatchId !== null) {
-                navigator.geolocation.clearWatch(userWatchId);
-                userWatchId = null;
+            // If GPS is active, turn it off
+            if (gpsActive) {
+                if (userWatchId !== null) {
+                    navigator.geolocation.clearWatch(userWatchId);
+                    userWatchId = null;
+                }
+                if (userLocationMarker) {
+                    map.removeLayer(userLocationMarker);
+                    userLocationMarker = null;
+                }
+                gpsActive = false;
+                document.getElementById('gps-btn').textContent = '📍';
+                document.getElementById('gps-btn').style.background = '#1a73e8';
+                return;
             }
             
             // Start watching position
+            gpsActive = true;
+            document.getElementById('gps-btn').textContent = '📍 ON';
+            document.getElementById('gps-btn').style.background = '#4CAF50';
+            
             userWatchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const lat = position.coords.latitude;
@@ -877,6 +892,9 @@
                 },
                 (error) => {
                     console.log('GPS error:', error.message);
+                    gpsActive = false;
+                    document.getElementById('gps-btn').textContent = '📍';
+                    document.getElementById('gps-btn').style.background = '#1a73e8';
                 },
                 { enableHighAccuracy: true, maximumAge: 3000 }
             );
