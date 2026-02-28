@@ -101,6 +101,36 @@
             background: #1557b0;
         }
         
+        .map-search {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 50px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .map-search input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        .map-search button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
         /* Table view */
         #table-view {
             flex: 1;
@@ -382,6 +412,10 @@
         </div>
         
         <div id="map" class="active">
+            <div class="map-search">
+                <input type="text" id="map-search" placeholder="Buscar dirección..." onkeypress="if(event.key==='Enter')searchMap()">
+                <button onclick="searchMap()">🔍</button>
+            </div>
             <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍 GPS</button>
         </div>
     </div>
@@ -541,6 +575,27 @@
                 },
                 { enableHighAccuracy: true }
             );
+        }
+        
+        async function searchMap() {
+            const query = document.getElementById('map-search').value;
+            if (!query) return;
+            
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Montería, Córdoba, Colombia')}`
+                );
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    map.setView([result.lat, result.lon], 17);
+                } else {
+                    alert('No se encontró la dirección');
+                }
+            } catch (error) {
+                alert('Error en la búsqueda');
+            }
         }
         
         function addMarkers() {
