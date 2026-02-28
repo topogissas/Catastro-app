@@ -103,9 +103,9 @@
         
         .map-search {
             position: absolute;
-            top: 10px;
+            top: 50px;
             left: 10px;
-            right: 10px;
+            right: 50px;
             z-index: 1000;
             display: flex;
             gap: 5px;
@@ -202,6 +202,21 @@
             border-radius: 6px;
             font-size: 14px;
             background: white;
+        }
+        
+        .zone-btn {
+            padding: 8px 12px;
+            border: 1px solid #1a73e8;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            color: #1a73e8;
+            cursor: pointer;
+        }
+        
+        .zone-btn.active {
+            background: #1a73e8;
+            color: white;
         }
         
         .leyenda {
@@ -388,6 +403,15 @@
         <div id="table-view">
             <div class="search-box">
                 <input type="text" id="search" placeholder="Buscar por dirección, barrio, matrícula, nombre..." oninput="filterData()">
+                <button onclick="clearAllFilters()" style="margin-left:5px;padding:8px 12px;background:#f44336;color:white;border:none;border-radius:6px;cursor:pointer;">✕ Limpiar</button>
+            </div>
+            <div class="filters-box">
+                <button class="zone-btn" onclick="setZoneFilter('')">Todas</button>
+                <button class="zone-btn" onclick="setZoneFilter('S1')">S1</button>
+                <button class="zone-btn" onclick="setZoneFilter('S2')">S2</button>
+                <button class="zone-btn" onclick="setZoneFilter('S3')">S3</button>
+                <button class="zone-btn" onclick="setZoneFilter('S4')">S4</button>
+                <button class="zone-btn" onclick="setZoneFilter('S5')">S5</button>
             </div>
             <div class="filters-box">
                 <select id="filter-uso" onchange="filterData()">
@@ -748,6 +772,34 @@
             }
         }
         
+        let currentZoneFilter = '';
+        
+        function setZoneFilter(zone) {
+            currentZoneFilter = zone;
+            
+            // Update button styles
+            document.querySelectorAll('.zone-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === (zone || 'Todas')) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            filterData();
+        }
+        
+        function clearAllFilters() {
+            document.getElementById('search').value = '';
+            document.getElementById('filter-uso').value = '';
+            document.getElementById('filter-estrato').value = '';
+            currentZoneFilter = '';
+            document.querySelectorAll('.zone-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === 'Todas') btn.classList.add('active');
+            });
+            filterData();
+        }
+        
         function filterData() {
             const search = document.getElementById('search').value.toLowerCase();
             const filterUso = document.getElementById('filter-uso').value;
@@ -768,6 +820,13 @@
                     matchesSearch = fields.some(f => f && f.toString().toLowerCase().includes(search));
                 }
                 
+                // Zone filter
+                let matchesZone = true;
+                if (currentZoneFilter) {
+                    const zona = item.Zona || '';
+                    matchesZone = zona.startsWith(currentZoneFilter);
+                }
+                
                 // Uso filter
                 let matchesUso = true;
                 if (filterUso && item['Uso del inmueble'] !== filterUso) {
@@ -781,7 +840,7 @@
                     matchesEstrato = estrato.includes(filterEstrato);
                 }
                 
-                return matchesSearch && matchesUso && matchesEstrato;
+                return matchesSearch && matchesZone && matchesUso && matchesEstrato;
             });
             
             updateStats();
@@ -835,7 +894,24 @@
             if (item.lat && item.lon && map) {
                 showView('map');
                 setTimeout(() => {
-                    map.setView([item.lat, item.lon], 18);
+                    // Clear previous markers
+                    markers.forEach(m => map.removeLayer(m));
+                    markers = [];
+                    
+                    // Add highlight marker
+                    const marker = L.circleMarker([item.lat, item.lon], {
+                        radius: 14,
+                        fillColor: '#1a73e8',
+                        color: '#fff',
+                        weight: 4,
+                        opacity: 1,
+                        fillOpacity: 0.9
+                    }).addTo(map);
+                    
+                    marker.bindPopup(`<b>${item.Direccion || item.Dirección}</b><br>${item.Barrio}`).openPopup();
+                    markers.push(marker);
+                    
+                    map.setView([item.lat, item.lon], 19);
                 }, 100);
             }
         }
