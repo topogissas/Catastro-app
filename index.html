@@ -82,6 +82,25 @@
             display: block;
         }
         
+        .gps-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 50px;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .gps-btn:hover {
+            background: #1557b0;
+        }
+        
         /* Table view */
         #table-view {
             flex: 1;
@@ -362,7 +381,9 @@
             </div>
         </div>
         
-        <div id="map" class="active"></div>
+        <div id="map" class="active">
+            <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍 GPS</button>
+        </div>
     </div>
     
     <!-- Detail Modal -->
@@ -475,6 +496,51 @@
                 const bounds = L.latLngBounds(allData.map(d => [d.lat, d.lon]));
                 map.fitBounds(bounds, { padding: [20, 20] });
             }
+        }
+        
+        let userLocationMarker = null;
+        
+        function getUserLocation() {
+            if (!map) {
+                alert('Mapa no cargado');
+                return;
+            }
+            
+            if (!navigator.geolocation) {
+                alert('Tu navegador no soporta GPS');
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    
+                    // Remove previous marker
+                    if (userLocationMarker) {
+                        map.removeLayer(userLocationMarker);
+                    }
+                    
+                    // Add blue marker for user location
+                    userLocationMarker = L.circleMarker([lat, lon], {
+                        radius: 10,
+                        fillColor: '#1a73e8',
+                        color: '#fff',
+                        weight: 3,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    userLocationMarker.bindPopup('📍 Tu ubicación').openPopup();
+                    
+                    // Center map on user
+                    map.setView([lat, lon], 16);
+                },
+                (error) => {
+                    alert('Error getting location: ' + error.message);
+                },
+                { enableHighAccuracy: true }
+            );
         }
         
         function addMarkers() {
