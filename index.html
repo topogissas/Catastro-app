@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#1a73e8">
     <meta name="description" content="Visualizador de catastro de usuarios">
     <link rel="manifest" href="manifest.json">
-    <title>Catastro SECTOR_1_1</title>
+    <title>Catastro de usuarios Riohacha</title>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -105,30 +105,54 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            right: 50px;
+            right: 10px;
             z-index: 1000;
             display: flex;
             gap: 5px;
+        }
+        
+        .map-search select {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            width: 120px;
         }
         
         .map-search input {
             flex: 1;
             padding: 8px 12px;
             border: 1px solid #ccc;
-            border-radius: 20px;
+            border-radius: 6px;
             font-size: 14px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         
-        .map-search button {
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
+        .map-results {
+            position: absolute;
+            top: 55px;
+            left: 10px;
+            right: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .map-results div {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-size: 13px;
+        }
+        
+        .map-results div:hover {
+            background: #f0f0f0;
         }
         
         /* Table view */
@@ -353,7 +377,7 @@
 </head>
 <body>
     <header>
-        <h1>🏠 Catastro SECTOR_1_1</h1>
+        <h1>🏠 Catastro de usuarios Riohacha</h1>
         <div class="header-buttons">
             <button class="header-btn active" id="btn-table" onclick="showView('table')">📋 Tabla</button>
             <button class="header-btn" id="btn-map" onclick="showView('map')">🗺️ Mapa</button>
@@ -413,9 +437,16 @@
         
         <div id="map" class="active">
             <div class="map-search">
-                <input type="text" id="map-search" placeholder="Buscar dirección..." onkeypress="if(event.key==='Enter')searchMap()">
-                <button onclick="searchMap()">🔍</button>
+                <select id="map-field">
+                    <option value="Direccion">Dirección</option>
+                    <option value="Barrio">Barrio</option>
+                    <option value="MATRICULA">Matrícula</option>
+                    <option value="Nombre del cliente">Cliente</option>
+                    <option value="Zona">Zona</option>
+                </select>
+                <input type="text" id="map-search" placeholder="Buscar..." oninput="searchMapAttr()">
             </div>
+            <div id="map-results" class="map-results"></div>
             <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍 GPS</button>
         </div>
     </div>
@@ -585,25 +616,62 @@
             );
         }
         
-        async function searchMap() {
-            const query = document.getElementById('map-search').value;
-            if (!query) return;
+        async function searchMapAttr() {
+            const query = document.getElementById('map-search').value.toLowerCase();
+            const field = document.getElementById('map-field').value;
+            const resultsDiv = document.getElementById('map-results');
             
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Montería, Córdoba, Colombia')}`
-                );
-                const data = await response.json();
-                
-                if (data && data.length > 0) {
-                    const result = data[0];
-                    map.setView([result.lat, result.lon], 17);
-                } else {
-                    alert('No se encontró la dirección');
-                }
-            } catch (error) {
-                alert('Error en la búsqueda');
+            if (!query) {
+                resultsDiv.style.display = 'none';
+                return;
             }
+            
+            // Search in allData
+            const results = allData.filter(item => {
+                const value = item[field];
+                return value && value.toString().toLowerCase().includes(query);
+            }).slice(0, 10);
+            
+            if (results.length === 0) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+            
+            resultsDiv.innerHTML = results.map(item => {
+                const addr = item.Direccion || item.Dirección || '-';
+                const barrio = item.Barrio || '-';
+                return `<div onclick="showOnMap(${item.lat}, ${item.lon}, '${addr}')">
+                    <b>${item[field]}</b><br>
+                    <small>${addr} - ${barrio}</small>
+                </div>`;
+            }).join('');
+            
+            resultsDiv.style.display = 'block';
+        }
+        
+        function showOnMap(lat, lon, addr) {
+            document.getElementById('map-results').style.display = 'none';
+            document.getElementById('map-search').value = addr;
+            
+            // Clear previous markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            // Add marker for selected point
+            const marker = L.circleMarker([lat, lon], {
+                radius: 12,
+                fillColor: '#1a73e8',
+                color: '#fff',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(map);
+            
+            marker.bindPopup(`<b>${addr}</b>`).openPopup();
+            markers.push(marker);
+            
+            map.setView([lat, lon], 18);
+            showView('map');
         }
         
         function addMarkers() {
@@ -754,13 +822,21 @@
                 }
             }
             
+            // Add "Ver en mapa" button
+            html += `<button onclick="viewOnMap(${index})" style="margin-top:15px;width:100%;padding:12px;background:#1a73e8;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🗺️ Ver en mapa</button>`;
+            
             modalBody.innerHTML = html;
             document.getElementById('detail-modal').classList.add('active');
-            
-            // Center map on point if in map view
+        }
+        
+        function viewOnMap(index) {
+            const item = allData[index];
+            closeModal();
             if (item.lat && item.lon && map) {
-                map.setView([item.lat, item.lon], 17);
                 showView('map');
+                setTimeout(() => {
+                    map.setView([item.lat, item.lon], 18);
+                }, 100);
             }
         }
         
