@@ -533,6 +533,7 @@
         }
         
         let userLocationMarker = null;
+        let userWatchId = null;
         
         function getUserLocation() {
             if (!map) {
@@ -545,7 +546,14 @@
                 return;
             }
             
-            navigator.geolocation.getCurrentPosition(
+            // Stop previous watch if exists
+            if (userWatchId !== null) {
+                navigator.geolocation.clearWatch(userWatchId);
+                userWatchId = null;
+            }
+            
+            // Start watching position
+            userWatchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
@@ -571,9 +579,9 @@
                     map.setView([lat, lon], 16);
                 },
                 (error) => {
-                    alert('Error getting location: ' + error.message);
+                    console.log('GPS error:', error.message);
                 },
-                { enableHighAccuracy: true }
+                { enableHighAccuracy: true, maximumAge: 3000 }
             );
         }
         
