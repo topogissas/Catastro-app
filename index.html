@@ -97,11 +97,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
         
-        .map-type-btn {
-            position: absolute;
-            top: 50px;
-            right: 10px;
-            z-index: 999;
+        .map-type-btn, .map-legend-btn {
             background: white;
             color: #333;
             border: 1px solid #ccc;
@@ -112,6 +108,32 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         
+        .map-type-btn {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 999;
+        }
+        
+        .map-legend-btn {
+            position: absolute;
+            top: 50px;
+            right: 70px;
+            z-index: 999;
+        }
+        
+        .map-legend {
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            z-index: 999;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
         .map-type-btn:hover {
             background: #f5f5f5;
         }
@@ -120,14 +142,19 @@
             background: #1557b0;
         }
         
-        .map-search {
+        .map-controls-top {
             position: absolute;
             top: 50px;
-            left: 70px;
-            right: 50px;
+            left: 10px;
+            right: 10px;
             z-index: 1000;
             display: flex;
-            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .map-search {
+            flex: 1;
+            display: flex;
             gap: 5px;
         }
         
@@ -147,7 +174,7 @@
         
         .map-sector-btns {
             position: absolute;
-            top: 95px;
+            top: 100px;
             left: 10px;
             z-index: 1000;
             display: flex;
@@ -524,18 +551,24 @@
         </div>
         
         <div id="map" class="active">
-            <div class="map-search">
-                <select id="map-field">
-                    <option value="Direccion">Dirección</option>
-                    <option value="Barrio">Barrio</option>
-                    <option value="MATRICULA">Matrícula</option>
-                    <option value="Nombre del cliente">Cliente</option>
-                    <option value="Zona">Zona</option>
-                </select>
-                <input type="text" id="map-search" placeholder="Buscar..." oninput="searchMapAttr()">
-                <button class="map-clear-btn" onclick="clearMapSearch()">✕</button>
+            <!-- Barra de búsqueda arriba -->
+            <div class="map-controls-top">
+                <div class="map-search">
+                    <select id="map-field">
+                        <option value="Direccion">Dirección</option>
+                        <option value="Barrio">Barrio</option>
+                        <option value="MATRICULA">Matrícula</option>
+                        <option value="Nombre del cliente">Cliente</option>
+                        <option value="Zona">Zona</option>
+                    </select>
+                    <input type="text" id="map-search" placeholder="Buscar..." oninput="searchMapAttr()">
+                    <button class="map-clear-btn" onclick="clearMapSearch()">✕</button>
+                </div>
+                <button class="map-legend-btn" onclick="toggleLegend()">🎨</button>
+                <button class="map-type-btn" onclick="toggleMapType()" id="map-type-btn">🗺️</button>
             </div>
             <div id="map-results" class="map-results"></div>
+            <!-- Botones de sectores a la izquierda -->
             <div class="map-sector-btns">
                 <button class="sector-btn active" onclick="filterMapSector('')">Todos</button>
                 <button class="sector-btn" onclick="filterMapSector('S1')">S1</button>
@@ -544,7 +577,22 @@
                 <button class="sector-btn" onclick="filterMapSector('S4')">S4</button>
                 <button class="sector-btn" onclick="filterMapSector('S5')">S5</button>
             </div>
-            <button class="map-type-btn" onclick="toggleMapType()" id="map-type-btn">🗺️</button>
+            <!-- Leyenda flotante -->
+            <div id="map-legend" class="map-legend" style="display:none;">
+                <div style="font-weight:600;margin-bottom:8px;font-size:13px;">Simbología</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#4CAF50;display:inline-block;"></span> Residencial
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#FF9800;display:inline-block;"></span> Comercial
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#9C27B0;display:inline-block;"></span> Mixto
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:12px;">
+                    <span style="width:14px;height:14px;border-radius:50%;background:#F44336;display:inline-block;"></span> Industrial
+                </div>
+            </div>
             <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍</button>
         </div>
     </div>
@@ -635,6 +683,11 @@
                     btn.classList.add('active');
                 }
             });
+        }
+        
+        function toggleLegend() {
+            const legend = document.getElementById('map-legend');
+            legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
         }
         
         // Columns to display in table
