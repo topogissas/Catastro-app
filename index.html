@@ -122,6 +122,38 @@
             z-index: 999;
         }
         
+        .map-type-dropdown {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            min-width: 140px;
+        }
+        
+        .map-type-dropdown.show {
+            display: block;
+        }
+        
+        .map-type-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .map-type-option:last-child {
+            border-bottom: none;
+        }
+        
+        .map-type-option:hover {
+            background: #f5f5f5;
+        }
+        
         .map-legend {
             position: absolute;
             bottom: 70px;
@@ -174,7 +206,7 @@
         
         .map-sector-btns {
             position: absolute;
-            top: 100px;
+            top: 110px;
             left: 10px;
             z-index: 1000;
             display: flex;
@@ -565,7 +597,12 @@
                     <button class="map-clear-btn" onclick="clearMapSearch()">✕</button>
                 </div>
                 <button class="map-legend-btn" onclick="toggleLegend()">🎨</button>
-                <button class="map-type-btn" onclick="toggleMapType()" id="map-type-btn">🗺️</button>
+                <button class="map-type-btn" onclick="toggleMapDropdown()" id="map-type-btn">🗺️</button>
+                <div class="map-type-dropdown" id="map-type-dropdown">
+                    <div class="map-type-option" onclick="setMapType('calle')">🗺️ Calle</div>
+                    <div class="map-type-option" onclick="setMapType('satelite')">🛰️ Satélite</div>
+                    <div class="map-type-option" onclick="setMapType('hibrido')">🛰️ Híbrido</div>
+                </div>
             </div>
             <div id="map-results" class="map-results"></div>
             <!-- Botones de sectores a la izquierda -->
@@ -828,6 +865,46 @@
                 }).addTo(map);
             }
         }
+        
+        function toggleMapDropdown() {
+            document.getElementById('map-type-dropdown').classList.toggle('show');
+        }
+        
+        function setMapType(type) {
+            currentMapType = type;
+            const btn = document.getElementById('map-type-btn');
+            
+            if (type === 'calle') {
+                btn.textContent = '🗺️';
+                if (currentTileLayer) map.removeLayer(currentTileLayer);
+                currentTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(map);
+            } else if (type === 'satelite') {
+                btn.textContent = '🛰️';
+                if (currentTileLayer) map.removeLayer(currentTileLayer);
+                currentTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri'
+                }).addTo(map);
+            } else if (type === 'hibrido') {
+                btn.textContent = '🛰️';
+                if (currentTileLayer) map.removeLayer(currentTileLayer);
+                currentTileLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    attribution: '© Google'
+                }).addTo(map);
+            }
+            
+            document.getElementById('map-type-dropdown').classList.remove('show');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('map-type-dropdown');
+            const btn = document.getElementById('map-type-btn');
+            if (!dropdown.contains(e.target) && e.target !== btn) {
+                dropdown.classList.remove('show');
+            }
+        });
         
         let userLocationMarker = null;
         let userWatchId = null;
