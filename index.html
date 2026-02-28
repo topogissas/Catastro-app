@@ -86,7 +86,7 @@
             position: absolute;
             bottom: 20px;
             right: 10px;
-            z-index: 1000;
+            z-index: 999;
             background: #1a73e8;
             color: white;
             border: none;
@@ -108,7 +108,51 @@
             right: 50px;
             z-index: 1000;
             display: flex;
+            flex-wrap: wrap;
             gap: 5px;
+        }
+        
+        .map-clear-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        
+        .map-clear-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .map-sector-btns {
+            position: absolute;
+            top: 100px;
+            left: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        
+        .sector-btn {
+            padding: 6px 10px;
+            border: 1px solid #1a73e8;
+            border-radius: 4px;
+            font-size: 12px;
+            background: white;
+            color: #1a73e8;
+            cursor: pointer;
+        }
+        
+        .sector-btn:hover {
+            background: #e8f0fe;
+        }
+        
+        .sector-btn.active {
+            background: #1a73e8;
+            color: white;
         }
         
         .map-search select {
@@ -469,6 +513,15 @@
                     <option value="Zona">Zona</option>
                 </select>
                 <input type="text" id="map-search" placeholder="Buscar..." oninput="searchMapAttr()">
+                <button class="map-clear-btn" onclick="clearMapSearch()">✕ Limpiar</button>
+            </div>
+            <div class="map-sector-btns">
+                <button class="sector-btn active" onclick="filterMapSector('')">Todos</button>
+                <button class="sector-btn" onclick="filterMapSector('S1')">S1</button>
+                <button class="sector-btn" onclick="filterMapSector('S2')">S2</button>
+                <button class="sector-btn" onclick="filterMapSector('S3')">S3</button>
+                <button class="sector-btn" onclick="filterMapSector('S4')">S4</button>
+                <button class="sector-btn" onclick="filterMapSector('S5')">S5</button>
             </div>
             <div id="map-results" class="map-results"></div>
             <button class="gps-btn" onclick="getUserLocation()" title="Mi ubicación">📍 GPS</button>
@@ -496,6 +549,72 @@
         let map = null;
         let markers = [];
         let currentView = 'map';
+        let currentMapSector = '';
+        
+        function clearMapSearch() {
+            document.getElementById('map-search').value = '';
+            document.getElementById('map-results').style.display = 'none';
+            currentMapSector = '';
+            updateSectorButtons();
+            addMarkers();
+        }
+        
+        function filterMapSector(zone) {
+            currentMapSector = zone;
+            updateSectorButtons();
+            
+            if (!zone) {
+                addMarkers();
+                return;
+            }
+            
+            // Filter markers by sector
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            const sectorData = allData.filter(item => {
+                const zona = item.Zona || '';
+                return zona.startsWith(zone);
+            });
+            
+            sectorData.forEach((item, index) => {
+                if (item.lat && item.lon) {
+                    const marker = L.circleMarker([item.lat, item.lon], {
+                        radius: 6,
+                        fillColor: getMarkerColor(item['Uso del inmueble']),
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    marker.on('click', () => showDetail(allData.indexOf(item)));
+                    marker.bindPopup(`
+                        <strong>${item.Direccion || item.Dirección || 'Sin dirección'}</strong><br>
+                        <small>${item.Barrio || ''}</small><br>
+                        <small>${item['Uso del inmueble'] || ''}</small>
+                    `);
+                    
+                    markers.push(marker);
+                }
+            });
+            
+            // Fit bounds to filtered markers
+            if (markers.length > 0) {
+                const bounds = L.latLngBounds(sectorData.map(d => [d.lat, d.lon]));
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+        
+        function updateSectorButtons() {
+            document.querySelectorAll('.sector-btn').forEach(btn => {
+                btn.classList.remove('active');
+                const text = btn.textContent;
+                if ((!currentMapSector && text === 'Todos') || text === currentMapSector) {
+                    btn.classList.add('active');
+                }
+            });
+        }
         
         // Columns to display in table
         const tableColumns = ['MATRICULA', 'Direccion', 'Barrio', 'Uso del inmueble', 'Estrato'];
