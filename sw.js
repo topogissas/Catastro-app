@@ -1,4 +1,4 @@
-const CACHE_NAME = 'catastro-v2';
+const CACHE_NAME = 'catastro-v3';
 const urlsToCache = [
   '.',
   'index.html',
