@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a73e8">
+    <meta name="description" content="Visualizador de catastro de usuarios">
+    <link rel="manifest" href="manifest.json">
+    <title>Catastro SECTOR_1_1</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #1a73e8, #4285f4);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .header-btn.active {
+            background: white;
+            color: #1a73e8;
+        }
+        
+        /* Main content */
+        #app {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Map view */
+        #map {
+            flex: 1;
+            width: 100%;
+            display: none;
+        }
+        
+        #map.active {
+            display: block;
+        }
+        
+        /* Table view */
+        #table-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        #table-view.hidden {
+            display: none;
+        }
+        
+        /* Search */
+        .search-box {
+            padding: 10px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            outline: none;
+        }
+        
+        .search-box input:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+        }
+        
+        /* Table */
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 0 10px 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            background: #1a73e8;
+            color: white;
+            z-index: 10;
+        }
+        
+        th, td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        
+        tr:hover {
+            background: #f5f9ff;
+        }
+        
+        tr.selected {
+            background: #e8f0fe;
+        }
+        
+        /* Stats bar */
+        .stats-bar {
+            background: #fff;
+            padding: 10px 16px;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: auto;
+            margin-top: 20px;
+        }
+        
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            font-size: 18px;
+            color: #1a73e8;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .modal-body {
+            padding: 16px;
+        }
+        
+        .detail-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            width: 140px;
+            color: #333;
+            flex-shrink: 0;
+        }
+        
+        .detail-value {
+            color: #555;
+            word-break: break-word;
+        }
+        
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 16px;
+        }
+        
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🏠 Catastro SECTOR_1_1</h1>
+        <div class="header-buttons">
+            <button class="header-btn active" id="btn-table" onclick="showView('table')">📋 Tabla</button>
+            <button class="header-btn" id="btn-map" onclick="showView('map')">🗺️ Mapa</button>
+        </div>
+    </header>
+    
+    <div id="app">
+        <div id="table-view">
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Buscar por dirección, barrio, matrícula, nombre..." oninput="filterData()">
+            </div>
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>MATRÍCULA</th>
+                            <th>DIRECCIÓN</th>
+                            <th>BARRIO</th>
+                            <th>USO</th>
+                            <th>ESTRATO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr><td colspan="5"><div class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="stats-bar">
+                <span id="total-count">Total: 0 registros</span>
+                <span id="filtered-count">Mostrando: 0</span>
+            </div>
+        </div>
+        
+        <div id="map" class="active"></div>
+    </div>
+    
+    <!-- Detail Modal -->
+    <div class="modal" id="detail-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Detalle del Predio</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let allData = [];
+        let filteredData = [];
+        let map = null;
+        let markers = [];
+        let currentView = 'map';
+        
+        // Columns to display in table
+        const tableColumns = ['MATRICULA', 'Direccion', 'Barrio', 'Uso del inmueble', 'Estrato'];
+        
+        // All columns for detail view
+        const detailLabels = {
+            'MATRICULA': 'Matrícula',
+            'Direccion': 'Dirección',
+            'Barrio': 'Barrio',
+            'Uso del inmueble': 'Uso',
+            'Estrato': 'Estrato',
+            'Unidades Habitacionales': 'Unidades',
+            'Tiene medidor?': 'Tiene Medidor',
+            'Estado del medidor': 'Estado Medidor',
+            'Serial del medidor': 'Serial Medidor',
+            'Marca del medidor': 'Marca Medidor',
+            'Foto del medidor': 'Foto Medidor',
+            'Tiene alberca?': 'Tiene Alberca',
+            'Tamaño m3': 'Tamaño Alberca (m³)',
+            'Capacidad de Tanque elevado (Litros)': 'Capacidad Tanque',
+            'Red de alcantarillado': 'Red Alcantarillado',
+            '¿Esta conectado a servicio de alcantarillado?': 'Conectado Alcantarillado',
+            'OBS_OFICIN': 'Observaciones',
+            'Zona': 'Zona',
+            'Estado': 'Estado',
+            'Nombre del cliente': 'Cliente',
+            'Foto Fachada': 'Foto Fachada'
+        };
+        
+        // Initialize
+        async function init() {
+            showView('map');
+            
+            // Load data
+            try {
+                const response = await fetch('data/features.json');
+                allData = await response.json();
+                filteredData = [...allData];
+                console.log('Datos cargados:', allData.length);
+                
+                // Update stats
+                updateStats();
+                
+                // Render table
+                renderTable();
+                
+                // Initialize map
+                setTimeout(initMap, 100);
+            } catch (error) {
+                console.error('Error cargando datos:', error);
+                document.getElementById('table-body').innerHTML = 
+                    '<tr><td colspan="5" style="text-align:center;color:red;">Error cargando datos</td></tr>';
+            }
+        }
+        
+        function showView(view) {
+            currentView = view;
+            
+            document.getElementById('btn-table').classList.toggle('active', view === 'table');
+            document.getElementById('btn-map').classList.toggle('active', view === 'map');
+            
+            document.getElementById('table-view').classList.toggle('hidden', view !== 'table');
+            document.getElementById('map').classList.toggle('active', view === 'map');
+            
+            if (view === 'map' && map) {
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        }
+        
+        function initMap() {
+            if (map) return;
+            
+            // Initialize map centered on data
+            const center = [11.547, -72.905];
+            map = L.map('map').setView(center, 14);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+            
+            // Add markers
+            addMarkers();
+            
+            // Fit bounds to data
+            if (allData.length > 0) {
+                const bounds = L.latLngBounds(allData.map(d => [d.lat, d.lon]));
+                map.fitBounds(bounds, { padding: [20, 20] });
+            }
+        }
+        
+        function addMarkers() {
+            // Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            // Add markers for filtered data
+            filteredData.forEach((item, index) => {
+                if (item.lat && item.lon) {
+                    const marker = L.circleMarker([item.lat, item.lon], {
+                        radius: 6,
+                        fillColor: getMarkerColor(item['Uso del inmueble']),
+                        color: '#fff',
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    marker.on('click', () => showDetail(index));
+                    
+                    // Add popup
+                    marker.bindPopup(`
+                        <strong>${item.Direccion || item.Dirección || 'Sin dirección'}</strong><br>
+                        <small>${item.Barrio || ''}</small><br>
+                        <small>${item['Uso del inmueble'] || ''}</small>
+                    `);
+                    
+                    markers.push(marker);
+                }
+            });
+        }
+        
+        function getMarkerColor(uso) {
+            const colors = {
+                'Residencial': '#4CAF50',
+                'Comercial': '#FF9800',
+                'Residencial-Comercial': '#9C27B0',
+                'Industrial': '#F44336',
+                ' mixto': '#9C27B0'
+            };
+            return colors[uso] || '#1a73e8';
+        }
+        
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No hay resultados</td></tr>';
+                return;
+            }
+            
+            // Show first 100 for performance
+            const displayData = filteredData.slice(0, 100);
+            
+            tbody.innerHTML = displayData.map((item, index) => {
+                const originalIndex = allData.indexOf(item);
+                return `
+                    <tr onclick="showDetail(${originalIndex})">
+                        <td>${item.MATRICULA || '-'}</td>
+                        <td>${item.Direccion || item.Dirección || '-'}</td>
+                        <td>${item.Barrio || '-'}</td>
+                        <td>${item['Uso del inmueble'] || '-'}</td>
+                        <td>${item.Estrato || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            if (filteredData.length > 100) {
+                tbody.innerHTML += `<tr><td colspan="5" style="text-align:center;color:#666;">
+                    Mostrando 100 de ${filteredData.length} registros<br>
+                    <small>Usa el mapa para ver todos los puntos</small>
+                </td></tr>`;
+            }
+        }
+        
+        function filterData() {
+            const search = document.getElementById('search').value.toLowerCase();
+            
+            if (!search) {
+                filteredData = [...allData];
+            } else {
+                filteredData = allData.filter(item => {
+                    const fields = [
+                        item.Direccion, item.Dirección,
+                        item.Barrio,
+                        item.MATRICULA,
+                        item['Nombre del cliente'],
+                        item.Zona,
+                        item['Uso del inmueble']
+                    ];
+                    return fields.some(f => f && f.toString().toLowerCase().includes(search));
+                });
+            }
+            
+            updateStats();
+            renderTable();
+            
+            if (map && currentView === 'map') {
+                addMarkers();
+            }
+        }
+        
+        function updateStats() {
+            document.getElementById('total-count').textContent = `Total: ${allData.length.toLocaleString()} registros`;
+            document.getElementById('filtered-count').textContent = `Mostrando: ${filteredData.length.toLocaleString()}`;
+        }
+        
+        function showDetail(index) {
+            const item = allData[index];
+            const modalBody = document.getElementById('modal-body');
+            
+            let html = '';
+            
+            for (const [key, label] of Object.entries(detailLabels)) {
+                const value = item[key];
+                if (value && value !== 'None' && value !== '') {
+                    let displayValue = value;
+                    
+                    // Check if it's a Google Drive link
+                    if (key.includes('Foto') && value.includes('drive.google.com')) {
+                        displayValue = `<a href="${value}" target="_blank" style="color:#1a73e8;">Ver foto</a>`;
+                    }
+                    
+                    html += `
+                        <div class="detail-row">
+                            <div class="detail-label">${label}</div>
+                            <div class="detail-value">${displayValue}</div>
+                        </div>
+                    `;
+                }
+            }
+            
+            modalBody.innerHTML = html;
+            document.getElementById('detail-modal').classList.add('active');
+            
+            // Center map on point if in map view
+            if (item.lat && item.lon && map) {
+                map.setView([item.lat, item.lon], 17);
+                showView('map');
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('detail-modal').classList.remove('active');
+        }
+        
+        // Close modal on outside click
+        document.getElementById('detail-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Initialize on load
+        init();
+        
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
